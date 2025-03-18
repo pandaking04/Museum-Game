@@ -1,22 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
-import Modal from "react-modal";
 import "./App.css";
-
-Modal.setAppElement("#root");
 
 function App() {
   const [turn, setTurn] = useState(1);
-  const [money, setMoney] = useState(3);
+  const [money, setMoney] = useState(5);
   const [exhibits, setExhibits] = useState([]);
   const [score, setScore] = useState(0);
   const [visitors, setVisitors] = useState(0);
   const [museumLevel, setMuseumLevel] = useState(1);
   const [explorerStatus, setExplorerStatus] = useState(null);
   const [selectedArea, setSelectedArea] = useState(null);
-
-  const [marketModalIsOpen, setMarketModalIsOpen] = useState(false);
+  const [isMarketOpen, setIsMarketOpen] = useState(false);
+  const [isExploreOpen, setIsExploreOpen] = useState(false);
+  const [events, setEvents] = useState([]);
 
   const UPGRADE_COST = 7;
   const ENTRY_FEE = 2;
@@ -110,6 +108,20 @@ function App() {
   ];
 
   const [market, setMarket] = useState(generateMarketItems());
+
+  const randomEvents = [
+    { id: 1, name: "กระแสโซเชียลมีเดีย Vistors + 10", effect: () => setVisitors(visitors + 10) },
+    { id: 2, name: "ปัญหาไฟฟ้าขัดข้อง Visitors - 10%", effect: () => setVisitors((visitors * 10) / 100) },
+    { id: 3, name: "ข้อเสนอจากเศรษฐี Coins + 10", effect: () => setMoney(money + 10) },
+  ];
+
+  useEffect(() => {
+    if (turn % 5 === 0) {
+      const event = randomEvents[Math.floor(Math.random() * randomEvents.length)];
+      setEvents([...events, event]);
+      event.effect();
+    }
+  }, [turn]);
 
   function generateMarketItems() {
     let items = [];
@@ -218,79 +230,98 @@ function App() {
         💵 Income per turn:{" "}
         {INCOME + Math.floor(visitors / VISITOR_RATE) * ENTRY_FEE} Coins
       </p>
-
-      <h2>เลือกสถานที่สำรวจ</h2>
-      {explorationAreas.map((area, index) => (
-        <button
-          key={index}
-          onClick={() => setSelectedArea(area)}
-          style={{ margin: "5px" }}
-        >
-          {area.name}
-        </button>
-      ))}
-
-      <p>
-        🌍 สถานที่ที่เลือก:{" "}
-        {selectedArea ? selectedArea.name : "ยังไม่ได้เลือก"}
-      </p>
-
       <button
-        onClick={sendExplorer}
-        disabled={!selectedArea || money < EXPLORER_COST || explorerStatus}
+        style={{ marginLeft: "10px" }}
+        onClick={() => setIsMarketOpen(true)}
       >
-        ส่งนักสำรวจ - {EXPLORER_COST} Coins
+        🛒 เปิดตลาด
       </button>
-      <button onClick={() => setMarketModalIsOpen(true)}>Market</button>
-
-      <Modal 
-        isOpen={marketModalIsOpen} 
-        onRequestClose={() => setMarketModalIsOpen(false)}
-        style={{
-          overlay: { backgroundColor: "rgba(0,0,0,0.5)" },
-          content: { padding: "20px", borderRadius: "10px" }
-        }}
+      <button
+        style={{ marginLeft: "10px" }}
+        onClick={() => setIsExploreOpen(true)}
       >
-        <h2>นี่คือ Modal</h2>
-        <p>รายละเอียดเนื้อหา...</p>
-        <button onClick={() => setMarketModalIsOpen(false)}>ปิด</button>
-      </Modal>
+        🌍 ส่งนักสำรวจ
+      </button>
+     
+      {isMarketOpen && (
+        <div className="modal">
+          <h2>🛒 ตลาด Exhibits</h2>
+          {market.map((item, index) => (
+            <div key={index} style={{ margin: "10px" }}>
+              <p>
+                {item.name} - 💰 {item.price} Coins - ⭐ {item.points} Points -
+                👥 {item.visitors} Visitors
+                <span
+                  style={{
+                    color:
+                      item.rarity === "Legendary"
+                        ? "gold"
+                        : item.rarity === "Epic"
+                        ? "purple"
+                        : item.rarity === "Rare"
+                        ? "blue"
+                        : "gray",
+                  }}
+                >
+                  ({item.rarity})
+                </span>
+              </p>
+             
+              <button
+                onClick={() => buyExhibit(item)}
+                disabled={money < item.price}
+              >
+                ซื้อ Exhibit นี้
+              </button>
+              
+            </div>
+            
+          ))}
+           <button
+                onClick={buyRandomExhibit}
+                disabled={money < RANDOM_MARKET_COST}
+              >
+                🎲 ซื้อแบบสุ่ม - {RANDOM_MARKET_COST} Coins
+              </button>
+          <button onClick={() => setIsMarketOpen(false)}>ปิด</button>
+        </div>
+      )}
 
-      <h2>🛒 ตลาด Exhibits</h2>
-      {market.map((item, index) => (
-        <div key={index} style={{ margin: "10px" }}>
-          <p>
-            {item.name} - 💰 {item.price} Coins - ⭐ {item.points} Points - 👥{" "}
-            {item.visitors} Visitors
-            <span
-              style={{
-                color:
-                  item.rarity === "Legendary"
-                    ? "gold"
-                    : item.rarity === "Epic"
-                    ? "purple"
-                    : item.rarity === "Rare"
-                    ? "blue"
-                    : "gray",
-              }}
+      {isExploreOpen && (
+        <div className="modal">
+          <h2>🌍 เลือกสถานที่สำรวจ</h2>
+          {explorationAreas.map((area, index) => (
+            <button
+              key={index}
+              onClick={() => setSelectedArea(area)}
+              style={{ margin: "5px" }}
             >
-              ({item.rarity})
-            </span>
+              {area.name}
+            </button>
+          ))}
+
+          <p>
+            🌍 สถานที่ที่เลือก:{" "}
+            {selectedArea ? selectedArea.name : "ยังไม่ได้เลือก"}
           </p>
+
           <button
-            onClick={() => buyExhibit(item)}
-            disabled={money < item.price}
+            onClick={sendExplorer}
+            disabled={!selectedArea || money < EXPLORER_COST || explorerStatus}
           >
-            ซื้อ Exhibit นี้
+            ส่งนักสำรวจ - {EXPLORER_COST} Coins
+          </button>
+          <button
+            style={{ marginLeft: "10px" }}
+            onClick={() => setIsExploreOpen(false)}
+          >
+            ปิด
           </button>
         </div>
-      ))}
-
-      <button onClick={buyRandomExhibit} disabled={money < RANDOM_MARKET_COST}>
-        🎲 ซื้อแบบสุ่ม - {RANDOM_MARKET_COST} Coins
-      </button>
+      )}
 
       <button
+        style={{ marginLeft: "10px" }}
         onClick={upgradeMuseum}
         disabled={money < UPGRADE_COST || museumLevel >= MAX_EXHIBITS.length}
       >
@@ -342,6 +373,13 @@ function App() {
           </p>
         ))}
       </div>
+
+      <h2>เหตุการณ์พิเศษ</h2>
+      <ul>
+        {events.map(event => (
+          <li key={event.id}>{event.name}</li>
+        ))}
+      </ul>
     </div>
   );
 }
