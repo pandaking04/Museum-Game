@@ -14,7 +14,12 @@ function App() {
   const [selectedArea, setSelectedArea] = useState(null);
   const [isMarketOpen, setIsMarketOpen] = useState(false);
   const [isExploreOpen, setIsExploreOpen] = useState(false);
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+  const [isStaffOpen, setIsStaffOpen] = useState(false);
   const [events, setEvents] = useState([]);
+  const [hiredStaff, setHiredStaff] = useState([]);
+  const [entryFee, setEntryFee] = useState(2);
+  const [exploreCost, setExploreCost] = useState(3);
 
   const UPGRADE_COST = 7;
   const ENTRY_FEE = 2;
@@ -107,21 +112,62 @@ function App() {
     },
   ];
 
+  
   const [market, setMarket] = useState(generateMarketItems());
 
   const randomEvents = [
-    { id: 1, name: "กระแสโซเชียลมีเดีย Vistors + 10", effect: () => setVisitors(visitors + 10) },
-    { id: 2, name: "ปัญหาไฟฟ้าขัดข้อง Visitors - 10%", effect: () => setVisitors((visitors * 10) / 100) },
-    { id: 3, name: "ข้อเสนอจากเศรษฐี Coins + 10", effect: () => setMoney(money + 10) },
+    {
+      id: 1,
+      name: "กระแสโซเชียลมีเดีย Vistors + 10",
+      effect: () => setVisitors(visitors + 10),
+    },
+    {
+      id: 2,
+      name: "ปัญหาไฟฟ้าขัดข้อง Visitors - 10%",
+      effect: () => setVisitors((visitors * 10) / 100),
+    },
+    {
+      id: 3,
+      name: "ข้อเสนอจากเศรษฐี Coins + 10",
+      effect: () => setMoney(money + 10),
+    },
+  ];
+
+  const staffMembers = [
+    { name: "Ms. Johnson", effect: "increaseIncome", amount: 2, cost: 15 },
+    { name: "Prof. Lee", effect: "boostRarity", amount: 10, cost: 15 },
+    { name: "Prof. Sho", effect: "decreaseExploreCost", amount: 1, cost: 15 },
   ];
 
   useEffect(() => {
     if (turn % 5 === 0) {
-      const event = randomEvents[Math.floor(Math.random() * randomEvents.length)];
+      const event =
+        randomEvents[Math.floor(Math.random() * randomEvents.length)];
       setEvents([...events, event]);
       event.effect();
     }
   }, [turn]);
+
+  
+
+  const hireStaff = (staff) => {
+    if (money >= staff.cost && !hiredStaff.includes(staff)) {
+      setMoney(money - staff.cost);
+      setHiredStaff([...hiredStaff, staff]);
+      applyStaffEffect(staff);
+    }
+  };
+
+  const applyStaffEffect = (staff) => {
+    if (staff.effect === "increaseIncome") {
+      setEntryFee((prev) => prev + staff.amount);
+    } else if (staff.effect === "boostRarity") {
+      setVisitors((prev) => prev + staff.amount);
+    }
+    else if (staff.effect === "decreaseExploreCost") {
+      setExploreCost((prev) => prev - staff.amount);
+    }
+  };
 
   function generateMarketItems() {
     let items = [];
@@ -146,7 +192,7 @@ function App() {
   const nextTurn = () => {
     let totalIncome = INCOME;
     if (turn % 5 === 0) {
-      const visitorIncome = Math.floor(visitors / VISITOR_RATE) * ENTRY_FEE;
+      const visitorIncome = Math.floor(visitors / VISITOR_RATE) * entryFee;
       totalIncome += visitorIncome;
     }
     setTurn(turn + 1);
@@ -170,8 +216,8 @@ function App() {
   };
 
   const sendExplorer = () => {
-    if (money >= EXPLORER_COST && selectedArea) {
-      setMoney(money - EXPLORER_COST);
+    if (money >= exploreCost && selectedArea) {
+      setMoney(money - exploreCost);
       setExplorerStatus({ area: selectedArea, turnsLeft: EXPLORATION_PERIOD });
       setSelectedArea(null); // รีเซ็ตตัวเลือกสถานที่
     }
@@ -225,10 +271,10 @@ function App() {
       <p>⭐ Score: {score} Points</p>
       <p>👥 Visitors: {visitors}</p>
       <p>🏛 Museum Level: {museumLevel}</p>
-      <p>📥 Entry Fee: {ENTRY_FEE} Coins</p>
+      <p>📥 Entry Fee: {entryFee} Coins</p>
       <p>
         💵 Income per turn:{" "}
-        {INCOME + Math.floor(visitors / VISITOR_RATE) * ENTRY_FEE} Coins
+        {INCOME + Math.floor(visitors / VISITOR_RATE) * entryFee} Coins
       </p>
       <button
         style={{ marginLeft: "10px" }}
@@ -242,9 +288,22 @@ function App() {
       >
         🌍 ส่งนักสำรวจ
       </button>
-     
+      <button
+        style={{ marginLeft: "10px" }}
+        onClick={() => setIsUpgradeOpen(true)}
+      >
+        ⏫ อัปเกรดพิพิธภัณฑ์
+      </button>
+
+      <button
+        style={{ marginLeft: "10px" }}
+        onClick={() => setIsStaffOpen(true)}
+      >
+        👥 จ้างStaff
+      </button>
+
       {isMarketOpen && (
-        <div className="modal">
+        <div className="modal" style={{ marginBottom: "10px" }}>
           <h2>🛒 ตลาด Exhibits</h2>
           {market.map((item, index) => (
             <div key={index} style={{ margin: "10px" }}>
@@ -266,29 +325,27 @@ function App() {
                   ({item.rarity})
                 </span>
               </p>
-             
+
               <button
                 onClick={() => buyExhibit(item)}
                 disabled={money < item.price}
               >
                 ซื้อ Exhibit นี้
               </button>
-              
             </div>
-            
           ))}
-           <button
-                onClick={buyRandomExhibit}
-                disabled={money < RANDOM_MARKET_COST}
-              >
-                🎲 ซื้อแบบสุ่ม - {RANDOM_MARKET_COST} Coins
-              </button>
+          <button
+            onClick={buyRandomExhibit}
+            disabled={money < RANDOM_MARKET_COST}
+          >
+            🎲 ซื้อแบบสุ่ม - {RANDOM_MARKET_COST} Coins
+          </button>
           <button onClick={() => setIsMarketOpen(false)}>ปิด</button>
         </div>
       )}
 
       {isExploreOpen && (
-        <div className="modal">
+        <div className="modal" style={{ marginBottom: "10px" }}>
           <h2>🌍 เลือกสถานที่สำรวจ</h2>
           {explorationAreas.map((area, index) => (
             <button
@@ -307,9 +364,9 @@ function App() {
 
           <button
             onClick={sendExplorer}
-            disabled={!selectedArea || money < EXPLORER_COST || explorerStatus}
+            disabled={!selectedArea || money < exploreCost || explorerStatus}
           >
-            ส่งนักสำรวจ - {EXPLORER_COST} Coins
+            ส่งนักสำรวจ - {exploreCost} Coins
           </button>
           <button
             style={{ marginLeft: "10px" }}
@@ -320,13 +377,50 @@ function App() {
         </div>
       )}
 
-      <button
-        style={{ marginLeft: "10px" }}
-        onClick={upgradeMuseum}
-        disabled={money < UPGRADE_COST || museumLevel >= MAX_EXHIBITS.length}
-      >
-        อัปเกรดพิพิธภัณฑ์ - {UPGRADE_COST} Coins
-      </button>
+      {isUpgradeOpen && (
+        <div style={{ marginBottom: "10px" }}>
+          <h2>Upgrade</h2>
+          <button
+            style={{ marginLeft: "10px" }}
+            onClick={upgradeMuseum}
+            disabled={
+              money < UPGRADE_COST || museumLevel >= MAX_EXHIBITS.length
+            }
+          >
+            อัปเกรดพิพิธภัณฑ์ - {UPGRADE_COST} Coins
+          </button>
+          <button
+            style={{ marginLeft: "10px" }}
+            onClick={() => setIsUpgradeOpen(false)}
+          >
+            ปิด
+          </button>
+        </div>
+      )}
+
+      {isStaffOpen && (
+        <div>
+          <h2>Staff</h2>
+          {staffMembers.map((staff) => (
+            <button
+              key={staff.name}
+              onClick={() => hireStaff(staff)}
+              disabled={
+                money < staff.cost ||
+                hiredStaff.some((h) => h.name === staff.name)
+              }
+            >
+              Hire {staff.name} - {staff.cost} Coins
+            </button>
+          ))}
+          <button
+            style={{ marginLeft: "10px" }}
+            onClick={() => setIsStaffOpen(false)}
+          >
+            ปิด
+          </button>
+        </div>
+      )}
 
       <button onClick={nextTurn} style={{ marginLeft: "10px" }}>
         Next Turn
@@ -376,7 +470,7 @@ function App() {
 
       <h2>เหตุการณ์พิเศษ</h2>
       <ul>
-        {events.map(event => (
+        {events.map((event) => (
           <li key={event.id}>{event.name}</li>
         ))}
       </ul>
